@@ -1,6 +1,7 @@
 path = require 'path'
 fs = require 'fs'
 _ = require 'lodash'
+async = require 'async'
 config = require './config.coffee'
 
 regex_map = {}
@@ -12,46 +13,52 @@ for k, v of config
     else
       regex_map[ext] = v.regex
 
-directoryTree = (base_path) ->
+directoryTree = (base_path, callback) ->
   item = {path: base_path}
 
-  try
-    stats = fs.statSync(base_path)
-  catch e
-    return null
+  fs.stat base_path, (err, stats) ->
+    return callback null if err
 
-  if stats.isFile()
-    ext = path.extname(base_path).toLowerCase().substring(1)
-    if ext not in _.keys(regex_map)
-      return null
-    item.ext = ext
-    item.mtime = stats.mtime.getTime()
-    item.definition = []
-    data = fs.readFileSync(base_path, 'utf8')
-    for regex_str in regex_map[ext]
-      regex_str = regex_str.replace(/{word}/g, '([a-zA-Z0-9_]+)')
-      regex = new RegExp(regex_str, 'ig')
-      results = data.match(regex)
-      if results
-        for result in results
-          regex = new RegExp(regex_str, 'i')
-          result = regex.exec(result)
-          item.definition.push result[1]
-    item.definition = _.uniq(item.definition)
-  else
-    item.children = fs.readdirSync(base_path)
-      .map (child) =>
-        directoryTree path.join(base_path, child)
-      .filter (file) =>
-        return file
-
-    if not item.children.length
-      return null
-
-  return item
+    if stats.isFile()
+      ext = path.extname(base_path).toLowerCase().substring(1)
+      if ext not in _.keys(regex_map)
+        return callback null
+      item.ext = ext
+      item.mtime = stats.mtime.getTime()
+      item.definition = []
+      fs.readFile base_path, encoding: 'utf8', (err, data) ->
+        return callback null if err
+        async.map regex_map[item.ext], (regex_str, callback) ->
+          regex_str = regex_str.replace(/{word}/g, '([a-zA-Z0-9_]+)')
+          regex = new RegExp(regex_str, 'ig')
+          results = data.match(regex)
+          if results
+            async.map results, (result, callback) ->
+              regex = new RegExp(regex_str, 'i')
+              result = regex.exec(result)
+              callback null, result[1]
+            , (err, definition) ->
+              callback err, definition
+          else
+            callback null, []
+        , (err, definition) ->
+          item.definition = _.uniq(_.flattenDeep(definition))
+          callback null, item
+    else
+      fs.readdir base_path, (err, children) ->
+        return callback null if err
+        async.map children, (child, callback) =>
+          directoryTree path.join(base_path, child), callback
+        , (err, children) ->
+          return callback null if err
+          item.children = _.compact(children)
+          if item.children.length
+            callback null, item
+          else
+            callback null
 
 console.time('search')
-files = directoryTree('../')
-console.timeEnd('search')
-
-fs.writeFile('./data.json', JSON.stringify(files, null, 2) , 'utf-8');
+directoryTree '/', (err, files) ->
+  console.log err if err
+  console.timeEnd('search')
+  fs.writeFile('./data.json', JSON.stringify(files, null, 2) , 'utf-8');
