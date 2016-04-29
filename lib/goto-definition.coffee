@@ -9,21 +9,16 @@ module.exports =
 
   firstMenu:
     'atom-workspace atom-text-editor:not(.mini)': [
-      {
-        label: 'Goto Definition',
-        command: 'goto-definition:go'
-      },
-      {
-        type: 'separator'
-      }
+      label: 'Goto Definition',
+      command: 'goto-definition:go'
+    ,
+      type: 'separator'
     ]
 
   normalMenu:
     'atom-workspace atom-text-editor:not(.mini)': [
-      {
-        label: 'Goto Definition',
-        command: 'goto-definition:go'
-      }
+      label: 'Goto Definition',
+      command: 'goto-definition:go'
     ]
 
   activate: ->
