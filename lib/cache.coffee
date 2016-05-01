@@ -3,9 +3,10 @@ fs = require 'fs'
 _ = require 'lodash'
 async = require 'async'
 
-class Cache
+class DefinitionMap
   constructor: (@base_path, {@regex_map, @language_exts}) ->
     @file_map = {}
+    @definition_map = {}
 
   build: (base_path, callback) ->
     if _.isFunction base_path
@@ -16,6 +17,8 @@ class Cache
       @file_map_build_time = new Date()
       @buildDefinition @file_map, =>
         @definition_build_time = new Date()
+
+        @buildDefinitionMap()
         callback(@file_map)
 
   buildFileMap: (base_path, file_map, callback) ->
@@ -51,14 +54,22 @@ class Cache
               regex = new RegExp(regex_str, 'i')
               result = regex.exec(result)
               callback null, result[1]
-            , (err, definition) ->
-              callback err, definition
+            , (err, definitions) ->
+              callback err, definitions
           else
             callback null, []
-        , (err, definition) ->
-          item.definition = _.uniq(_.flattenDeep(definition))
+        , (err, definitions) ->
+          item.definitions = _.uniq(_.flattenDeep(definitions))
           file_map[file_path] = item
           callback()
     , callback
 
-module.exports = Cache
+  buildDefinitionMap: ->
+    for file_path, {definitions} of @file_map
+      for definition in definitions
+        if @definition_map[definition]
+          @definition_map[definition] = _.uniq(@definition_map[definition], file_path)
+        else
+          @definition_map[definition] = [file_path]
+
+module.exports = DefinitionMap
