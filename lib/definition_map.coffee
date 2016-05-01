@@ -17,8 +17,6 @@ class DefinitionMap
       @file_map_build_time = new Date()
       @buildDefinition @file_map, =>
         @definition_build_time = new Date()
-
-        @buildDefinitionMap()
         callback(@file_map)
 
   buildFileMap: (base_path, file_map, callback) ->
@@ -62,7 +60,9 @@ class DefinitionMap
           item.definitions = _.uniq(_.flattenDeep(definitions))
           file_map[file_path] = item
           callback()
-    , callback
+    , (err) =>
+      @buildDefinitionMap()
+      callback()
 
   buildDefinitionMap: ->
     for file_path, {definitions} of @file_map
