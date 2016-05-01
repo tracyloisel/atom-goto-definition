@@ -23,7 +23,7 @@ module.exports =
       "(?:^|\\s|\\.){word}\\s*[:=]\\s*(?:\\([\\s\\S]*?\\))?\\s*[=-]>"
       "(?:^|\\s|\\.){word}\\s*[:=]\\s*function\\s*\\(" # JavaScript Function
       "(?:^|\\s)function\\s+{word}\\s*\\("
-      # "(^|\\s){word}\\([\\s\\S]*?\\)\\s*{"  # ES6
+      "(^|\\s){word}\\(?:[\\s\\S]*?\\)\\s*{"  # ES6
     ]
     type: ["*.coffee", "*.js"]
 
