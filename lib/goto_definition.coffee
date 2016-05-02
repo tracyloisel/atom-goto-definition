@@ -1,4 +1,11 @@
-DefinitionsView = require './definitions-view.coffee'
+path = require 'path'
+fs = require 'fs'
+_ = require 'lodash'
+async = require 'async'
+
+DefinitionsView = require './definitions_view.coffee'
+DefinitionsMap = require './definitions_map.coffee'
+Utils = require './utils'
 config = require './config.coffee'
 
 module.exports =
@@ -22,6 +29,16 @@ module.exports =
     ]
 
   activate: ->
+    return if @is_activate
+    editor = atom.workspace.getActiveTextEditor()
+
+    [project_path] = atom.project.relativizePath(editor.getPath())
+
+    @utils = new Utils(config)
+    @definitions_map = new DefinitionsMap(project_path, @utils)
+    @definitions_map.build ->
+      console.log 'build success'
+
     atom.commands.add 'atom-workspace atom-text-editor:not(.mini)', 'goto-definition:go', =>
       @go()
 
@@ -47,6 +64,9 @@ module.exports =
       scan_options = JSON.parse(JSON.stringify(config[grammar_name]))
       regex = scan_options.regex.join('|').replace(/{word}/g, word)
       paths = scan_options.type.concat project_name
+      if @definitions_map[word]:
+        paths = @definitions_map[word]
+        console.log(paths)
 
       return {
         regex: new RegExp(regex, 'i')
